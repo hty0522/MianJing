@@ -660,3 +660,150 @@ func main() {
 Process finished with exit code 0
 ```
 
+### -----------------------------
+
+### 2 sync.Cond 的四个方法
+
+sync.Cond 的定义如下：
+
+```
+// Each Cond has an associated Locker L (often a *Mutex or *RWMutex),
+// which must be held when changing the condition and
+// when calling the Wait method.
+//
+// A Cond must not be copied after first use.
+type Cond struct {
+        noCopy noCopy
+
+        // L is held while observing or changing the condition
+        L Locker
+
+        notify  notifyList
+        checker copyChecker
+}
+```
+
+每个 Cond 实例都会关联一个锁 L（互斥锁 *Mutex，或读写锁 *RWMutex），当修改条件或者调用 Wait 方法时，必须加锁。
+
+和 sync.Cond 相关的有如下几个方法：
+
+#### 2.1 NewCond 创建实例
+
+```
+func NewCond(l Locker) *Cond
+```
+
+NewCond 创建 Cond 实例时，需要关联一个锁。
+
+#### 2.2 Broadcast 广播唤醒所有
+
+```
+// Broadcast wakes all goroutines waiting on c.
+//
+// It is allowed but not required for the caller to hold c.L
+// during the call.
+func (c *Cond) Broadcast()
+```
+
+Broadcast 唤醒所有等待条件变量 c 的 goroutine，无需锁保护。
+
+#### 2.3 Signal 唤醒一个协程4
+
+```
+// Signal wakes one goroutine waiting on c, if there is any.
+//
+// It is allowed but not required for the caller to hold c.L
+// during the call.
+func (c *Cond) Signal()
+```
+
+Signal 只唤醒任意 1 个等待条件变量 c 的 goroutine，无需锁保护。
+
+#### 2.4 Wait 等待
+
+```
+// Wait atomically unlocks c.L and suspends execution
+// of the calling goroutine. After later resuming execution,
+// Wait locks c.L before returning. Unlike in other systems,
+// Wait cannot return unless awoken by Broadcast or Signal.
+//
+// Because c.L is not locked when Wait first resumes, the caller
+// typically cannot assume that the condition is true when
+// Wait returns. Instead, the caller should Wait in a loop:
+//
+//    c.L.Lock()
+//    for !condition() {
+//        c.Wait()
+//    }
+//    ... make use of condition ...
+//    c.L.Unlock()
+//
+func (c *Cond) Wait()
+```
+
+调用 Wait 会自动释放锁 c.L，并挂起调用者所在的 goroutine，因此当前协程会阻塞在 Wait 方法调用的地方。如果其他协程调用了 Signal 或 Broadcast 唤醒了该协程，那么 Wait 方法在结束阻塞时，会重新给 c.L 加锁，并且继续执行 Wait 后面的代码。
+
+对条件的检查，使用了 `for !condition()` 而非 `if`，是因为当前协程被唤醒时，条件不一定符合要求，需要再次 Wait 等待下次被唤醒。为了保险起见，使用 `for` 能够确保条件符合要求后，再执行后续的代码。
+
+```
+c.L.Lock()
+for !condition() {
+    c.Wait()
+}
+... make use of condition ...
+c.L.Unlock()
+```
+
+### 3 使用示例
+
+接下来我们实现一个简单的例子，三个协程调用 `Wait()` 等待，另一个协程调用 `Broadcast()` 唤醒所有等待的协程。
+
+```
+var done = false
+
+func read(name string, c *sync.Cond) {
+	c.L.Lock()
+	for !done {
+		c.Wait()
+	}
+	log.Println(name, "starts reading")
+	c.L.Unlock()
+}
+
+func write(name string, c *sync.Cond) {
+	log.Println(name, "starts writing")
+	time.Sleep(time.Second)
+	c.L.Lock()
+	done = true
+	c.L.Unlock()
+	log.Println(name, "wakes all")
+	c.Broadcast()
+}
+
+func main() {
+	cond := sync.NewCond(&sync.Mutex{})
+
+	go read("reader1", cond)
+	go read("reader2", cond)
+	go read("reader3", cond)
+	write("writer", cond)
+
+	time.Sleep(time.Second * 3)
+}
+```
+
+- `done` 即互斥锁需要保护的条件变量。
+- `read()` 调用 `Wait()` 等待通知，直到 done 为 true。
+- `write()` 接收数据，接收完成后，将 done 置为 true，调用 `Broadcast()` 通知所有等待的协程。
+- `write()` 中的暂停了 1s，一方面是模拟耗时，另一方面是确保前面的 3 个 read 协程都执行到 `Wait()`，处于等待状态。main 函数最后暂停了 3s，确保所有操作执行完毕。
+
+运行结果如下：
+
+```
+$ go run main.go
+2021/01/14 23:18:20 writer starts writing
+2021/01/14 23:18:21 writer wakes all
+2021/01/14 23:18:21 reader2 starts reading
+2021/01/14 23:18:21 reader3 starts reading
+2021/01/14 23:18:21 reader1 starts reading
+```
