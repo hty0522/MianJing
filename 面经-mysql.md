@@ -7,7 +7,7 @@
 - MyISAM
   MyISAM是MySQL5.1版本前的默认存储引擎，MyISAM的并发性比较差，不支持事务和外键等操作，默认的锁的粒度为表级锁。
 
-![image-20220117144239281](D:\typora\file\面经-mysql.assets\image-20220117144239281.png)
+![image-20220117144239281](面经-mysql.assets\image-20220117144239281.png)
 
 ### 数据库的三大范式
 
@@ -25,35 +25,35 @@
 
 ​		FLOAT、DOUBLE及DECIMAL为浮点数类型，DECIMAL是利用字符串进行处理的，能存储精确的小数。相比于FLOAT和DOUBLE，DECIMAL的效率更低些。FLOAT、DOUBLE及DECIMAL都可以指定列宽，例如FLOAT(5,2)表示一共5位，两位存储小数部分，三位存储整数部分。
 
-![image-20220117145044333](D:\typora\file\面经-mysql.assets\image-20220117145044333.png)
+![image-20220117145044333](面经-mysql.assets\image-20220117145044333.png)
 
 #### 字符串
 
 ​		字符串常用的主要有CHAR和VARCHAR，VARCHAR主要用于存储可变长字符串，相比于定长的CHAR更节省空间。CHAR是定长的，根据定义的字符串长度分配空间。
 ​		**应用场景**：对于经常变更的数据使用CHAR更好，CHAR不容易产生碎片。对于非常短的列也是使用CHAR更好些，CHAR相比于VARCHAR在效率上更高些。一般避免使用TEXT/BLOB等类型，因为查询时会使用临时表，造成严重的性能开销。
 
-![image-20220117145119455](D:\typora\file\面经-mysql.assets\image-20220117145119455.png)
+![image-20220117145119455](面经-mysql.assets\image-20220117145119455.png)
 
 #### 日期
 
 ​		比较常用的有year、time、date、datetime、timestamp等，datetime保存从1000年到9999年的时间，精度位秒，使用8字节的存储空间，与时区无关。timestamp和UNIX的时间戳相同，保存从1970年1月1日午夜到2038年的时间，精度到秒，使用四个字节的存储空间，并且与时区相关。
 ​		应用场景：尽量使用timestamp，相比于datetime它有着更高的空间效率。
 
-![image-20220117145109054](D:\typora\file\面经-mysql.assets\image-20220117145109054.png)
+![image-20220117145109054](面经-mysql.assets\image-20220117145109054.png)
 
 ### -----------------------------
 
 ### redo log & binlog
 
-![image-20220124221200588](D:\typora\file\面经-mysql.assets\image-20220124221200588.png)
+![image-20220124221200588](面经-mysql.assets\image-20220124221200588.png)
 
-![image-20220117163938955](D:\typora\file\面经-mysql.assets\image-20220117163938955.png)
+![image-20220117163938955](面经-mysql.assets\image-20220117163938955.png)
 
 
 
-![image-20220117164026185](D:\typora\file\面经-mysql.assets\image-20220117164026185.png)
+![image-20220117164026185](面经-mysql.assets\image-20220117164026185.png)
 
-![image-20220117164047341](D:\typora\file\面经-mysql.assets\image-20220117164047341.png)
+![image-20220117164047341](面经-mysql.assets\image-20220117164047341.png)
 
 如果不使用“两阶段提交”，那么数据库的状态就有可能和用它的日志恢复出来的库的状态不一致
 
@@ -68,11 +68,11 @@ Crash recovery
 
 ACID（Atomicity、Consistency、Isolation、Durability，即**原子性、一致性、隔离性、持久性**），
 
-![image-20220117191409006](D:\typora\file\面经-mysql.assets\image-20220117191409006.png)
+![image-20220117191409006](面经-mysql.assets\image-20220117191409006.png)
 
-![image-20220117191423973](D:\typora\file\面经-mysql.assets\image-20220117191423973.png)
+![image-20220117191423973](面经-mysql.assets\image-20220117191423973.png)
 
-![image-20220117191434179](D:\typora\file\面经-mysql.assets\image-20220117191434179.png)
+![image-20220117191434179](面经-mysql.assets\image-20220117191434179.png)
 
 ### -----------------------------
 
@@ -209,7 +209,7 @@ select * from table_name where  a like '%ab%'
 
 #### 聚簇索引
 
-![image-20220117210655654](D:\typora\file\面经-mysql.assets\image-20220117210655654.png)
+![image-20220117210655654](面经-mysql.assets\image-20220117210655654.png)
 
 
 
@@ -228,15 +228,15 @@ select * from table_name where  a like '%ab%'
 
 #### 非聚簇索引
 
-![image-20220117212539964](D:\typora\file\面经-mysql.assets\image-20220117212539964.png)
+![image-20220117212539964](面经-mysql.assets\image-20220117212539964.png)
 
-![image-20220117212553603](D:\typora\file\面经-mysql.assets\image-20220117212553603.png)
+![image-20220117212553603](面经-mysql.assets\image-20220117212553603.png)
 
-![image-20220117212600376](D:\typora\file\面经-mysql.assets\image-20220117212600376.png)
+![image-20220117212600376](面经-mysql.assets\image-20220117212600376.png)
 
 #### 联合索引
 
-![image-20220117212707634](D:\typora\file\面经-mysql.assets\image-20220117212707634.png)
+![image-20220117212707634](面经-mysql.assets\image-20220117212707634.png)
 
 ### -----------------------------
 
@@ -280,7 +280,7 @@ select * from table_name where  a like '%ab%'
 
 数据库的隔离级别分别可以解决数据库的脏读、不可重复读、幻读等问题。
 
-![image-20220118222754065](D:\typora\file\面经-mysql.assets\image-20220118222754065.png)
+![image-20220118222754065](面经-mysql.assets\image-20220118222754065.png)
 
 ### -----------------------------
 
@@ -310,17 +310,17 @@ MVCC的实现原理：
    **DB_ROLL_PTR**：所需空间7byte，回滚指针，指向这条记录的上一个版本。
    它们大致长这样，省略了具体字段的值。
 
-![image-20220118223132124](D:\typora\file\面经-mysql.assets\image-20220118223132124.png)
+![image-20220118223132124](面经-mysql.assets\image-20220118223132124.png)
 
 - undo日志
 
   ​		MVCC做使用到的快照会存储在Undo日志中，该日志通过回滚指针将一个一个数据行的所有快照连接起来。它们大致长这样。
 
-![image-20220118223411871](D:\typora\file\面经-mysql.assets\image-20220118223411871.png)
+![image-20220118223411871](面经-mysql.assets\image-20220118223411871.png)
 
-![image-20220118223534767](D:\typora\file\面经-mysql.assets\image-20220118223534767.png)
+![image-20220118223534767](面经-mysql.assets\image-20220118223534767.png)
 
-![image-20220118223549000](D:\typora\file\面经-mysql.assets\image-20220118223549000.png)
+![image-20220118223549000](面经-mysql.assets\image-20220118223549000.png)
 
 ​		事务对同一记录的修改，记录的各个会在Undo日志中连接成一个[线性表](https://www.zhihu.com/search?q=线性表&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A2207943559})，在表头的就是最新的旧纪录。
 
@@ -421,13 +421,13 @@ MVCC就是一种乐观锁的实现方式，而且是一种很常用的[乐观锁
 
 #### 数据库的锁与隔离级别的关系？
 
-![image-20220119124520515](D:\typora\file\面经-mysql.assets\image-20220119124520515.png)
+![image-20220119124520515](面经-mysql.assets\image-20220119124520515.png)
 
 #### 数据库锁的类型有哪些？
 
 ​		按照锁的粒度可以将MySQL锁分为三种：
 
-![image-20220119124732610](D:\typora\file\面经-mysql.assets\image-20220119124732610.png)
+![image-20220119124732610](面经-mysql.assets\image-20220119124732610.png)
 
 MyISAM默认采用表级锁，InnoDB默认采用行级锁。
 
@@ -451,7 +451,7 @@ MyISAM默认采用表级锁，InnoDB默认采用行级锁。
 
 锁的兼容性如下：
 
-![image-20220119125600354](D:\typora\file\面经-mysql.assets\image-20220119125600354.png)
+![image-20220119125600354](面经-mysql.assets\image-20220119125600354.png)
 
 行锁实现方式：INnoDB的行锁是通过给索引上的索引项加锁实现的，如果没有索引，InnoDB将通过隐藏的聚簇索引来对记录进行加锁。
 
@@ -542,13 +542,13 @@ SELECT * FROM student WHERE (name,age,sex) IN (SELECT name,age,sex FROM class1) 
 
 #### MySQL的几种连接查询
 
-![image-20220119162848075](D:\typora\file\面经-mysql.assets\image-20220119162848075.png)
+![image-20220119162848075](面经-mysql.assets\image-20220119162848075.png)
 
-![image-20220119162855547](D:\typora\file\面经-mysql.assets\image-20220119162855547.png)
+![image-20220119162855547](面经-mysql.assets\image-20220119162855547.png)
 
-![image-20220119162912013](D:\typora\file\面经-mysql.assets\image-20220119162912013.png)
+![image-20220119162912013](面经-mysql.assets\image-20220119162912013.png)
 
-![image-20220119162922784](D:\typora\file\面经-mysql.assets\image-20220119162922784.png)
+![image-20220119162922784](面经-mysql.assets\image-20220119162922784.png)
 
 #### mysql中in和exists的区别？
 
@@ -568,7 +568,7 @@ in和exists一般用于子查询。
 
 #### drop、delete和truncate的区别？
 
-![image-20220119204012096](D:\typora\file\面经-mysql.assets\image-20220119204012096.png)
+![image-20220119204012096](面经-mysql.assets\image-20220119204012096.png)
 
 #### UNION和UNION ALL的区别？
 
@@ -721,7 +721,7 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 
 - 如果主数据库宕机，可快速将业务切换到从数据库上，可避免数据丢失；从库宕机还有其他从库
 
-  ![image-20220121103642071](D:\typora\file\面经-mysql.assets\image-20220121103642071.png)
+  ![image-20220121103642071](面经-mysql.assets\image-20220121103642071.png)
 
 **第一步：**master在每个事务更新数据完成之前，将该操作记录串行地写入到binlog文件中。
 

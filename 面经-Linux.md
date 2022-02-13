@@ -98,7 +98,7 @@ Current DISK READ:       0.00 B/s | Current DISK WRITE:       0.00 B/s
   921 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % python3 /usr/sbin/iotop
 ```
 
-![image-20220112112540907](D:\typora\file\面经-Linux.assets\image-20220112112540907.png)
+![image-20220112112540907](面经-Linux.assets\image-20220112112540907.png)
 
 
 

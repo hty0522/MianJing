@@ -1,4 +1,4 @@
-![image-20211114161206950](D:\typora\file\nethttp.assets\image-20211114161206950.png)
+![image-20211114161206950](nethttp.assets\image-20211114161206950.png)
 
 - 客户端发送请求；
 - 服务器中的多路复用器收到请求；
