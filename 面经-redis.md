@@ -28,7 +28,7 @@ Redis的内存淘汰策略是指在Redis的用于缓存的内存不足时，怎�
 
 ### redis存储结构
 
-redis有五种基本数据类型，分别是 string，list，hash，set，zset，redis是key-value型数据库，key全部都是string类型
+redis有**五种基本数据类型**，分别是 string，list，hash，set，zset，redis是key-value型数据库，key全部都是string类型
 
 其余的是基于Redis的基本数据类型实现的
 
@@ -83,6 +83,10 @@ ziplist实际上就可以理解为一个存放在连续内存空间上的双向�
 
 ### 为什么单线程的Redis可以支持高并发访问？
 
+- **基于内存大数据库**
+- **IO多路复用技术**
+- **数据结构高效**
+
 ​		redis自身就是基于内存的数据库，因此数据处理速度非常快，另外它的底层使用了很多效率很高的数据结构，如哈希表和跳表等。这是它能支持高并发的原因之一；另一方面，redis使用的是IO多路复用技术，可以在网络操作中并发处理数十万的客户端连接访问。
 
 ​		每一个网络连接都是一个socket，都有对应的文件描述符，IO多路复用模块同时监听多个FD，当有事件产生时，文件事件处理器就回调FD绑定的事件处理器。虽然整个文件事件处理器是单线程上运行，但通过IO多路复用模块，实现了对多个FD读写的监控，提高了网络通信模型的性能，同时也可以保证整个 Redis 服务实现的简单。
@@ -110,3 +114,166 @@ ziplist实际上就可以理解为一个存放在连续内存空间上的双向�
 ​		master服务器内存中给每个slave服务器维护了一份**同步日志**和**同步标识**，每个slave服务器在跟master服务器进行同步时都会携带自己的同步标识和上次同步的最后位置。
 
 ​		当主从连接断掉之后，slave服务器隔断时间（默认1s）主动尝试和master服务器进行连接，如果从服务器携带的[偏移量](https://www.zhihu.com/search?q=偏移量&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2172285754"})标识还在master服务器上的**同步备份日志中**，那么就从slave发送的偏移量开始继续上次的同步操作，如果slave发送的偏移量已经不再master的同步备份日志中（可能由于主从之间断掉的时间比较长或者在断掉的短暂时间内master服务器接收到大量的写操作），则必须进行一次全量更新。在部分同步过程中，master会将本地记录的同步备份日志中记录的指令依次发送给slave服务器从而达到数据一致。
+
+### ------------------------------
+
+### redis底层数据结构
+
+#### 简单动态字符串（simple dynamic string）SDS
+
+##### SDS好处
+
+- [二进制](https://www.zhihu.com/search?q=二进制&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})安全的数据结构：
+
+​		所有的SDS 的api都以二进制的方式来处理数据，不像C语言以标识符来判断是否结束，判断是否到达字符串结尾的依据是表头的len成员，以为着它可以存放任何二进制数据，因此获取字符串长度时间复杂度为O(1)
+
+- 提供了内存预分配机制，避免了频繁的内存分配
+
+  第一次创建是数据实际大小，后续扩容时小于1M分配一倍，大于1M分配1MB
+
+- 兼容C语言的函数库
+
+- 惰性删除机制，字符串缩减后的空间不释放，作为预分配空间保留。
+
+- 节省内存空间
+
+  
+
+##### SDS结构成员变量
+
+- **len，SDS 所保存的字符串长度**。这样获取字符串长度的时候，只需要返回这个[变量值](https://www.zhihu.com/search?q=变量值&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})就行，时间复杂度只需要 O（1）。
+- **alloc，分配给字符数组的空间长度**。这样在修改字符串的时候，可以通过 `alloc - len` 计算 出剩余的空间大小，然后用来判断空间是否满足修改需求，如果不满足的话，就会自动将 SDS  的空间扩展至执行修改所需的大小，然后才执行实际的修改操作，所以使用 SDS 既不需要手动修改 SDS 的空间大小，也不会出现前面所说的[缓冲区](https://www.zhihu.com/search?q=缓冲区&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})益处的问题。
+- **flags，SDS 类型，用来表示不同类型的 SDS**。一共设计了 5 种类型，分别是 sdshdr5、sdshdr8、sdshdr16、sdshdr32 和 sdshdr64，后面在说明区别之处。
+- **buf[]，字节数组，用来保存实际数据**。不需要用 “\0” 字符来标识字符串结尾了，而是直接将其作为二进制数据处理，可以用来保存图片等二进制数据。它即可以保存文本数据，也可以保存二进制数据，所以叫字节数组会更好点。
+
+设计成五种数据结构是为了灵活保存大小不同的字符串，从而有效节省内存空间
+
+#### redis数据是怎么存储的？
+
+##### 储存方法
+
+​		采用的**数组+链表**，对key进行hash计算，得到hash槽，当有hash冲突时候，采用**头插法**，产生链表，采用这种方法的主要优点在于查询速度快，但随着数据不断增多，出现哈希冲突的可能性也越来越高。链表会越来越长，查询这位置上的时间就会越来越长，要解决这一问题，需要rehash。
+
+​		Redis在rehash时采取[渐进式](https://www.zhihu.com/search?q=渐进式&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})的原因：**数据量如果过大的话，一次性rehash会有庞大的计算量，这很可能导致服务器一段时间内停止服务**。
+
+​		Redis 会使用了两个全局哈希表进行 rehash，给「哈希表 2」 分配空间，一般会比「哈希表 1」 大 2 倍
+
+​		rehash期间所有的增删查改操作除完成指定名另外，会将哈希表1中索引的值rehash到表2，渐进式rehash过程中，字典会同时使用两个哈希表ht[0]和ht[1]，例如要查找一个键的话，**服务器会优先查找ht[0]，如果不存在，再查找ht[1]**，诸如此类。此外当执行**新增操作**时，新的键值对**一律保存到ht[1]**，不再对ht[0]进行任何操作，以保证ht[0]的键值对数量只减不增，直至变为空表。
+
+##### rehash触发条件
+
+- **当负载因子大于等于 1 ，就是没有执行 RDB 快照或没有进行 AOF 重写的时候，就会进行 rehash 操作。**
+- **当负载因子大于等于 5 时，此时说明哈希冲突非常严重了，不管有没有有在执行 RDB 快照或 AOF 重写，都会强制进行 rehash 操作。**
+
+#### redis数据结构
+
+五种数据类型。 六种数据结构
+
+**数据类型由数据结构构成**
+
+- List 数据类型底层数据结构由「[双向链表](https://www.zhihu.com/search?q=双向链表&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})」或「压缩表列表」实现；
+- Hash 数据类型底层数据结构由「压缩列表」或「哈希表」实现；
+- Set 数据类型底层数据结构由「哈希表」或「整数集合」实现；
+- Zset 数据类型底层数据结构由「压缩列表」或「跳表」实现；、
+
+##### list
+
+**ziplist**
+
+​		ziplist是由一系列特殊编码的连续内存块组成的顺序存储结构，类似于数组，ziplist在内存中是连续存储的，但是不同于数组，为了节省内存 ziplist的每个元素所占的内存大小可以不同（数组中叫元素，ziplist叫节点entry，下文都用“节点”），每个节点可以用来存储一个整数或者一个字符串。
+
+每个节点由三部分组成：prerawlen、len、data
+
+- prerawlen: 记录上一个节点的长度，为了方便反向遍历ziplist
+- len: entry中数据的长度
+- data: 当前节点的值，可以是数字或字符串
+
+​		**ziplist 的优点是内存紧凑，访问效率高，缺点是更新效率低，并且数据量较大时，可能导致大量的内存复制**
+
+------
+
+##### hash
+
+​		Hash 数据结构底层实现为一个字典( dict ),也是RedisBb用来存储K-V的数据结构,当数据量比较小，或者单个元素比较小时，底层用ziplist存储，数据大小和元素数量阈值可以通过如下参数设置
+
+------
+
+##### set
+
+​		Set 为无序的，自动去重的集合数据类型，Set 数据结构底层实现为一个value 为 null 的 字典( dict ),当数据可以用整形表示时，Set集合将被编码为intset数据结构。两个条件任意满足时Set将用hashtable存储数据。
+
+------
+
+##### zset
+
+​		ZSet 为有序的，自动去重的集合数据类型，ZSet 数据结构底层实现为 字典(dict) + 跳表(skiplist) ,当数据比较少时，用ziplist编码结构存储。
+
+​		zset应用场景：排行榜、限流（短时间内访问频次超过最大次数）、延时队列（超过某个时间才能执行发送或接收消息）
+
+![image-20220215233552080](面经-redis.assets/image-20220215233552080.png)
+
+### ------------------------------
+
+### redis和mysql如何保持数据一致性
+
+一致性也是指的最终一致性，在有缓存的情况下，不好做到强一致性
+
+#### **三个经典的缓存模式**
+
+- Cache-Aside Pattern
+- Read-Through/Write through
+- Write behind
+
+#### **Cache-Aside Pattern  旁路缓存模式**
+
+##### **Cache-Aside 读流程**
+
+![img](面经-redis.assets/v2-aaee6a4d249c61e53bf9a4861b169822_b.jpg)
+
+##### **Cache-Aside 写流程**
+
+![img](面经-redis.assets/v2-216a4fe7e37eb8acac2dde7a76c7a5a7_b.jpg)
+
+#### **Read-Through/Write-Through（读写穿透）**
+
+##### Read-Through
+
+​		**Read-Through**就是多了一层**[Cache-Provider](https://www.zhihu.com/search?q=Cache-Provider&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"article"%2C"sourceId"%3A"374014490"})**，流程如下：
+
+![img](面经-redis.assets/v2-7b55477404de34d980d06fe290fe6466_b.jpg)
+
+##### **Write-Through**
+
+​		**Write-Through**模式下，当发生写请求时，也是由**缓存抽象层**完成数据源和缓存数据的更新,流程如下：
+
+![img](面经-redis.assets/v2-c39cd2c6866f710926f5c7f189f435bc_b.jpg)
+
+#### **Write behind （异步缓存写入）**
+
+​		**Write behind**跟**Read-Through/Write-Through**有相似的地方，都是由`Cache Provider`来负责缓存和数据库的读写。它两又有个很大的不同：**Read/Write Through**是同步更新缓存和数据的，**Write Behind**则是只更新缓存，不直接更新数据库，通过**批量异步**的方式来更新数据库。
+
+​		***适合频繁写的情况***
+
+![img](面经-redis.assets/v2-5db843d48868c4d675e992766e284bbf_b.jpg)	
+
+#### 为什么是删除缓存而不是更新缓存
+
+​		AB两个写请求，写mysql和redis的顺序可能由于网络原因不一致，因此导致缓存和数据库数据不一致。
+
+**更新缓存相对于删除缓存**，还有两点劣势：
+
+- 如果你写入的缓存值，是经过复杂计算才得到的话。更新缓存频率高的话，就浪费性能啦。
+- 在写数据库场景多，读数据场景少的情况下，数据很多时候还没被读取到，又被更新了，这也浪费了性能呢(实际上，写多的场景，用缓存也不是很划算了
+
+#### **双写的情况下，先操作数据库还是先操作缓存？**
+
+​		**先操作数据库，后操作缓存**。Cache-Aside模式
+
+​		如果先删除缓存，可能会设置老的数据作为缓存，新的数据写入数据库。
+
+**延时双删策略**
+
+- 第一步：先删除缓存
+- 第二步：再写入数据库
+- 第三步：休眠xxx毫秒（根据具体的业务时间来定）
+- 第四步：再次删除缓存。
