@@ -43,7 +43,26 @@
 
 ### ---------------------------
 
+### MySQL中一条SQL语句的执行过程
+
+1. 客户端通过TCP连接发送连接请求到mysql连接器，连接器会对该请求进行权限验证以及连接资源分配
+2. // 先去缓存中查询，如果命中查询是否有权限，有就返回。（建立连接后在 MySQL8.0 版本，查询缓存功能就删除了，不存在查询缓存的功能了）
+3. 如果缓存未命中，将语句交给分析器做语法分析，如果存在语法错误返回
+4. 再交由预处理器，检查数据表和数据列是否存在等
+5. 语句解析完成后，MySQL就知道要查什么了，之后会将语句传递给优化器进行优化，选择最快的查找方式
+6. 最后交给执行器,执行器先判断有没有执行语句的权限，如果有继续执行，逐渐将数据保存到结果集，查询完成后将结果集返回客户端
+
+### ---------------------------
+
 ### redo log & binlog
+
+#### 服务层 引擎层
+
+1. redolog是InnoDB引擎特有的；binlog是MySQL的Server层实现的，所有引擎都可以使用。
+2. redo log是物理日志，记录的是“在某个数据页上做了什么修改”；binlog是逻辑日志，记录的
+是这个语句的原始逻辑，比如“给ID=2这一行的c字段加1”。
+3. redo log是循环写的，空间固定会用完；binlog是可以追加写入的。“追加写”是指binlog文件
+写到一定大小后会切换到下一个，并不会覆盖以前的日志。
 
 ![image-20220124221200588](面经-mysql.assets\image-20220124221200588.png)
 
@@ -242,6 +261,8 @@ select * from table_name where  a like '%ab%'
 ![image-20220117212600376](面经-mysql.assets\image-20220117212600376.png)
 
 #### 联合索引
+
+​		**联合索引的好处：利用覆盖索引，避免回表操作。**
 
 ![image-20220117212707634](面经-mysql.assets\image-20220117212707634.png)
 
@@ -727,11 +748,31 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 - DISTINCT：对V7表中的结果进行去重操作，创建虚拟表V8，如果使用了GROUP BY子句则无需使用DISTINCT，因为分组的时候是将列中唯一的值分成一组，并且每组只返回一行记录，所以所有的记录都h是不同的。
 - ORDER BY：对V8表中的结果进行排序。
 
+### mysql复制
+
+1.传统方式：
+基于主库的[bin-log](https://www.zhihu.com/search?q=bin-log&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"article"%2C"sourceId"%3A"100863091"})将日志事件和事件位置复制到从库，从库再加以应用来达到主从同步的目的。
+
+2.Gtid方式（MySQL>=5.7推荐使用）：
+基于GTID的复制中，从库会告知主库已经执行的事务的GTID的值，然后主库会将所有未执行的事务的GTID的列表返回给从库，并且可以保证同一个事务只在指定的从库执行一次。
+
 ### ---------------------------
 
 ### 为什么MySQL要读写分离
 
-读写分离主要依赖于主从复制，主从复制为读写分离服务。
+主从架构本来就是一种高可用性解决方案，而不是高并发解决方案
+
+**读写分离主要依赖于主从复制，主从复制为读写分离服务**。
+
+----
+
+1. salve从库连接master主库，有多少salve就会创建多少binlog dump线程
+2. 当master对数据进行操作过后，会按顺序写入binlog
+3. binlog dump线程 会通知所有的salve节点，并将相应的binlog内容推送给slave节点
+4. I/O线程接收到binlog内容后，将内容写入到本地的relay-log
+5. SQL线程读取relay-log，并根据relay-log的内容对数据库做相应的操作
+
+---
 
 读写分离的优势：
 
@@ -765,3 +806,16 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 ​		我们很多时候编写完一条[SQL语句](https://www.zhihu.com/search?q=SQL语句&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"article"%2C"sourceId"%3A"51771446"})，往往想知道这条SQL语句执行是否高效。或者说，我们建立好的索引在这条SQL语句中是否使用到了，就可以使用`explain`命令来分析一下！
 
 ​		id、select_type、table、type、possible_keys、key、key_len、ref、rows、Extra
+
+### ---------------------------
+
+### left join,right join,inner join,outer join
+
+inner join：只有两张表都有的才显示
+
+left join：左边表的全部显示，右边表只显示重复部分，其余补空显示
+
+right join ： 右边表全部显示，左边表只显示重复部分，其余补空显示
+
+outer join：查询左表右表所有数据，去除重复数据
+
