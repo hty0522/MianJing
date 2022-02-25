@@ -310,7 +310,7 @@ select * from table_name where  a like '%ab%'
 
 - 未提交读：一个事务在提交前，它的修改对其他事务也是可见的。 
 - 提交读：一个事务提交之后，它的修改才能被其他事务看到。 **行锁**
-- 可重复读：在同一个事务中多次读取到的数据是一致的。 （默认隔离级别） **行锁**
+- 可重复读：在同一个事务中多次读取到的数据是一致的，没有完全解决幻读。 （默认隔离级别） **行锁**
 - [串行化](https://www.zhihu.com/search?q=串行化&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2207943559"})：需要加锁实现，会强制事务串行执行。 
 
 数据库的隔离级别分别可以解决数据库的脏读、不可重复读、幻读等问题。
@@ -327,7 +327,7 @@ select * from table_name where  a like '%ab%'
 
 #### 什么是MVCC？
 
-​		MVCC(multiple version concurrent control)是一种控制并发的方法，主要用来提高数据库的并发性能。最早的数据库系统，只有读读之间可以并发，读写，写读，写写都要阻塞。引入多版本之后，**只有写写之间相互阻塞**，其他三种操作都可以并行，这样大幅度提高了InnoDB的并发度。
+​		MVCC(multiple version concurrent control)是一种多版本并发控制的方法，主要用来提高数据库的并发性能。最早的数据库系统，只有读读之间可以并发，读写，写读，写写都要阻塞。引入多版本之后，**只有写写之间相互阻塞**，其他三种操作都可以并行，这样大幅度提高了InnoDB的并发度。
 
 在了解MVCC时应该先了解当前读和快照读。
 
