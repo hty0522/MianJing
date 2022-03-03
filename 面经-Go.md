@@ -10,15 +10,87 @@
 
 待填坑
 
-FIFO先入先出的的队列
+​		FIFO先入先出的的队列
 
 #### map
 
-哈希表实现，哈希碰撞达到一定程度后扩容
+​		map实现的底层结构是hmap，每声明一个map就有一个hmap结构体与之对应
+
+​		向一个空map取值或取不存在值，返回空
+
+<img src="面经-Go.assets/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZlbmdzaGVueXVu,size_16,color_FFFFFF,t_70.png" alt="img" style="zoom: 67%;" />
+
+```go
+// Map contains Type fields specific to maps.
+type Map struct {
+    Key  *Type // Key type
+    Elem *Type // Val (elem) type
+
+    Bucket *Type // internal struct type representing a hash bucket
+    Hmap   *Type // internal struct type representing the Hmap (map header object)
+    Hiter  *Type // internal struct type representing hash iterator state
+}
+```
+
+​		
+
+```go
+type hmap struct {
+	// Note: the format of the hmap is also encoded in cmd/compile/internal/reflectdata/reflect.go.
+	// Make sure this stays in sync with the compiler's definition.
+	count     int // # live cells == size of map.  Must be first (used by len() builtin)
+	flags     uint8
+	B         uint8  // log_2 of # of buckets (can hold up to loadFactor * 2^B items)
+	noverflow uint16 // approximate number of overflow buckets; see incrnoverflow for details
+	hash0     uint32 // hash seed
+
+	buckets    unsafe.Pointer // array of 2^B Buckets. may be nil if count==0.
+	oldbuckets unsafe.Pointer // previous bucket array of half the size, non-nil only when growing
+	nevacuate  uintptr        // progress counter for evacuation (buckets less than this have been evacuated)
+
+	extra *mapextra // optional fields
+}
+```
+
+​		map的bucket数量是  2^B个，每个bucket可以存储8个键值对。
+
+​		如果超出了 **8** 个的话， 那么就会溢出，此时就会再创建一个键值对，用类似链表的方式将bucket连接起来。链接到**额外的溢出桶**，这时就出现了哈希冲突。我们用负载因子来衡量一个哈希表的冲突情况。
+
+负载因子 = 键数量/bucket数量，负载因子达到6.5的时候触发扩容。
+
+##### 引发扩容的两个场景
+
+1. 负载因子 > 6.5时，也即平均每个bucket存储的键值对达到6.5个。
+
+​		bucket 最大数量（2^B）**直接变成原来 bucket 数量的 2 倍**。于是，就有新老 bucket 了。注意，这时候元素都在老 bucket 里，还没迁移到新的 bucket 来。而且，新 bucket 只是最大数量变为原来最大数量（2^B）的 2 倍（2^B * 2）.
+
+​		一次性搬迁将会造成比较大的延时，Go采用逐步搬迁策略，即每次访问map时都会触发一次搬迁，每次搬迁2个键值对。
+
+1. overflow数量 > 2^15时，也即overflow数量超过32768时。
+
+​		所谓等量扩容，实际上并不是扩大容量，buckets数量不变，重新做一遍类似增量扩容的搬迁动作，把松散的键值对重新排列一次，以使bucket的使用率更高，进而保证更快的存取。
+
+#### map并发访问安全吗？
+
+- 不安全
+- 有两个解决方法：
+  - 加锁
+  - 使用golang自带的sync.map
 
 #### slice
 
-​		slice是无固定长度的数组，slice结构体除包括数组特性外，还包括cap和len属性
+​		slice是无固定长度的数组，slice结构体除包括数组特性外，还包括cap和len属性，append的时候cap和len变化，截取切片的时候指针改变
+
+```
+type slice struct {
+	// 一个指向底层数组的指针
+	array unsafe.Pointer
+	// slice当前元素个数 即len()时返回的数
+	len   int
+	// slice的容量 即cap()时返回的数
+	cap   int
+}
+```
 
 ### ---------------------------
 
