@@ -321,6 +321,13 @@ select * from table_name where  a like '%ab%'
 
 ![image-20220118222754065](面经-mysql.assets\image-20220118222754065.png)
 
+### MySQL事务持久化机制
+
+​		利用redo log来实现数据的持久化，由于磁盘IO相对于内存非常慢，因此我们先将操作记录到内存中去，redo log有一个redo log buffer区域，我们可以控制
+
+- 每次提交事务都向磁盘同步redo log
+- 每次提交事务将redo log写道操作系统的缓冲区，然后每秒调用一个函数fsync()刷到磁盘上
+
 ### ---------------------------
 
 ### 隔离级别如何实现，如何保证并发安全
@@ -822,6 +829,14 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 2. **「半同步策略」**：Master至少会等待一个Slave回应后提交。
 3. **「异步策略」**：Master不用等待Slave回应就可以提交。
 4. **「延迟策略」**：Slave要落后于Master指定的时间。
+
+### ---------------------------
+
+### mysql分库分表
+
+​		当一张表的数据量过大时，查询一次所花的时间会变多。分表可以减小数据库的负担，缩短查询时间。
+
+​		待整理...
 
 ### ---------------------------
 
