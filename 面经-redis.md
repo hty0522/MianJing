@@ -207,7 +207,7 @@ redis有**五种基本数据类型**，分别是 string，list，hash，set，zs
 
 **数据类型由数据结构构成**
 
-- List 数据类型底层数据结构由「[双向链表](https://www.zhihu.com/search?q=双向链表&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})」或「压缩表列表」实现；
+- List 数据类型底层数据结构由「[双向链表](https://www.zhihu.com/search?q=双向链表&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"2248942194"})」或「压缩表列表」实现；数据量少用ziplist，数据量多用双端链表
 - Hash 数据类型底层数据结构由「压缩列表」或「哈希表」实现；
 - Set 数据类型底层数据结构由「哈希表」或「整数集合」实现；
 - Zset 数据类型底层数据结构由「压缩列表」或「跳表」实现；、
@@ -249,6 +249,10 @@ string
 - prerawlen: 记录上一个节点的长度，为了方便反向遍历ziplist
 - len: entry中数据的长度
 - data: 当前节点的值，可以是数字或字符串
+
+**连锁更新**		
+
+​		ziplist的节点有一个属性存储上一个节点的长度，这个属性使得ziplist可以反向遍历，该属性长度是1字节或者5字节（根据前一个节点长度是否小于254），若有一连串的253字节的节点，这些节点的这个属性都是1，若在表头加一个255字节的，后面的每一个节点该属性都会发生变化，由此造成连锁更新。
 
 ​		**ziplist 的优点是内存紧凑，访问效率高，缺点是更新效率低，并且数据量较大时，可能导致大量的内存复制**
 
