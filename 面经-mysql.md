@@ -59,7 +59,7 @@
 #### 服务层 引擎层
 
 1. redolog是InnoDB引擎特有的；binlog是MySQL的Server层实现的，所有引擎都可以使用。
-2. redo log是物理日志，记录的是“在某个数据页上做了什么修改”；binlog是逻辑日志，记录的
+2. **redo log是物理日志**，记录的是“在某个数据页上做了什么修改”；**binlog是逻辑日志**，记录的
 是这个语句的原始逻辑，比如“给ID=2这一行的c字段加1”。
 3. redo log是循环写的，空间固定会用完；binlog是可以追加写入的。“追加写”是指binlog文件
 写到一定大小后会切换到下一个，并不会覆盖以前的日志。
@@ -227,6 +227,16 @@ select * from table_name where  a like '%ab%'
 
 根据同样的原理我们可以算出一个高度为 3 的 B+ 树可以存放：1170×1170×16=21902400 条这样的记录。
 
+### 索引失效
+
+**where语句中包含or时，可能会导致索引失效**
+
+**. where语句中索引列使用了负向查询，可能会导致索引失效** NOT  ！=
+
+// 还有一些待整理
+
+
+
 ### ---------------------------
 
 ### 聚簇索引 & 非聚簇索引
@@ -290,7 +300,7 @@ select * from table_name where  a like '%ab%'
 
 #### 如何保证四大特性？
 
-​		MySQL的存储引擎InnoDB使用重做日志（redo log）保证一致性与持久性，回滚日志（undo log）保证原子性，使用各种锁来保证隔离性。
+​		MySQL的存储引擎InnoDB使用重做日志（redo log）保证一致性与持久性，**回滚日志（undo log）保证原子性**，使用各种锁来保证隔离性。
 
 #### 数据库的并发一致性问题
 
@@ -399,7 +409,7 @@ MVCC的实现原理：
 
 ### 可重复读如何实现的
 
-通过一致性视图和多版本并发控制（MVCC）实现。
+**通过一致性视图和多版本并发控制（MVCC）实现。**
 
 ​		**MVCC就是一种乐观锁的实现方式，而且是一种很常用的[乐观锁](https://www.zhihu.com/search?q=乐观锁&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra={"sourceType"%3A"answer"%2C"sourceId"%3A"1626229650"})实现方式。**
 
@@ -791,7 +801,7 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 
 ### 为什么MySQL要读写分离
 
-主从架构本来就是一种高可用性解决方案，而不是高并发解决方案
+高可用；高并发
 
 **读写分离主要依赖于主从复制，主从复制为读写分离服务**。
 
