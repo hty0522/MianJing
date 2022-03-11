@@ -83,7 +83,17 @@ type hmap struct {
 
 #### slice
 
-​		slice是无固定长度的数组，slice结构体除包括数组特性外，还包括cap和len属性，append的时候cap和len变化，截取切片的时候指针改变
+##### array 和 slice的区别
+
+​		array指定数组的长度，slice不指定，比array多一个cap的属性
+
+​		函数传递时，array传递的是值，slice传递的是指针，因此切片在函数内改变，在函数外也改变。
+
+​		假如在函数内append，可能会引发扩容，导致数组变化。而函数外看不到这种变化。
+
+
+
+​		slice是无固定长度的数组，slice结构体除包括数组特性外，还包括cap和len属性，append的时候cap和len变化，截取切片的时候指针改变。
 
 ```
 type slice struct {
@@ -95,6 +105,14 @@ type slice struct {
 	cap   int
 }
 ```
+
+### struct
+
+#### struct是否可以比较
+
+​		同一struct的两个实例，如果其中不包含不可比较部分（map，slice，function），可以比较；也可以比较两指针
+
+​		不同struct的两个实例，强转换后可以比较
 
 ### mutex
 
@@ -155,9 +173,15 @@ type Mutex struct {
 
 ### Go内存管理
 
-​		Go的内存管理是借鉴了TCMalloc，TCMalloc为每一个进程分配了一块缓存，小对象是在mcache中分配的，而大对象是直接从mheap分配的。当mheap没有足够的内存时，mheap会向OS申请内存
+​		Go的内存管理主要包括分配内存块，回收内存块。
+
+​		操作系统对的内存以页为单位，而**Span是内存管理的基本单位**，一组连续的Page组成Span，GO中的每个P拥有一个mcache，它保存各种大小的Span，**小对象直接从mcache分配**；mcentral是所有线程共享的缓存，**当某个mcache的某个级别的Span被分配完时，它就会向mcache申请同级别的Span**。mheap是堆内存的抽象，把从操作系统申请出的内存页组织成Span并保存起来，mheap的Span不够用时会向OS申请内存。（除了mheap是树结构，其他都是链表组织）
+
+​		Go的垃圾回收机制将无用的span释放还给OS，然后再交由mheap以继续分配。（三色标记法）
 
 ![img](面经-Go.assets/v2-d5f5de4d6d22e67887ab4861ba5e721f_b.jpg)
+
+​		spans用于存放spans的指针;bitmap用于标记对象，方便垃圾回收；arena就是由一个个内存页组成。
 
 ### ---------------------------
 
