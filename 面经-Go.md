@@ -166,7 +166,8 @@ type slice struct {
 ​		同一struct的两个实例，如果其中不包含不可比较部分（map，slice，function），可以比较；也可以比较两指针
 
 ​		不同struct的两个实例，强转换后可以比较
->>>>>>> temp
+
+
 
 ### mutex
 
@@ -614,7 +615,81 @@ GMP是一种协程调度模型
 
 可视化GMP调度还没看 https://blog.csdn.net/xmcy001122/article/details/119392934
 
-<font color='red'>红色</font>
+#### G
+
+```go
+/// runtime/runtime2.go 关键字段
+type g struct {
+    stack       stack   // g自己的栈
+
+    m            *m      // 执行当前g的m
+    sched        gobuf   // 保存了g的现场，goroutine切换时通过它来恢复
+    atomicstatus uint32  // g的状态Gidle,Grunnable,Grunning,Gsyscall,Gwaiting,Gdead
+    goid         int64
+    schedlink    guintptr // 下一个g, g链表
+
+    preempt       bool //抢占标记
+
+    lockedm        muintptr // 锁定的M,g中断恢复指定M执行
+    gopc           uintptr  // 创建该goroutine的指令地址
+    startpc        uintptr  // goroutine 函数的指令地址
+}
+```
+
+### M
+
+```go
+/// runtime/runtime2.go 关键字段
+type m struct {
+    g0      *g     // g0, 每个M都有自己独有的g0
+
+    curg          *g       // 当前正在运行的g
+    p             puintptr // 当前用于的p
+    nextp         puintptr // 当m被唤醒时，首先拥有这个p
+    id            int64
+    spinning      bool // 是否处于自旋
+
+    park          note
+    alllink       *m // on allm
+    schedlink     muintptr // 下一个m, m链表
+    mcache        *mcache  // 内存分配
+    lockedg       guintptr // 和 G 的lockedm对应
+    freelink      *m // on sched.freem
+
+}
+```
+
+### P
+
+```go
+/// runtime/runtime2.go 关键字段
+type p struct {
+    id          int32
+    status      uint32 // 状态
+    link        puintptr // 下一个P, P链表
+    m           muintptr // 拥有这个P的M
+    mcache      *mcache  
+
+    // P本地runnable状态的G队列
+    runqhead uint32
+    runqtail uint32
+    runq     [256]guintptr
+    
+    runnext guintptr // 一个比runq优先级更高的runnable G
+
+    // 状态为dead的G链表，在获取G时会从这里面获取
+    gFree struct {
+        gList
+        n int32
+    }
+
+    gcBgMarkWorker       guintptr // (atomic)
+    gcw gcWork
+
+}
+```
+
+
 
 ### ---------------------------
 
@@ -678,6 +753,8 @@ func main() {
 
 ​		线程是指进程内的一个执行单元,也是进程内的可调度实体。线程是进程的一个实体,是CPU调度和分派的基本单位,它是比进程更小的能独立运行的基本单位。线程自己基本上不拥有系统资源,只拥有一点在运行中必不可少的资源(如程序计数器,一组寄存器和栈)，但是它可与同属一个进程的其他的线程共享进程所拥有的全部资源。**线程间通信主要通过共享内存**，上下文切换很快，资源开销较少，但相比进程不够稳定容易丢失数据。
 
+​		线程之间的同步与互斥主要通过锁机制来实现，包括互斥锁、读写锁、自旋锁、条件锁、信号量等等
+
 　　**协程**
 
 ​		协程是非抢占式（相对于线程的抢占），但是以抢占式调度的逻辑，防止一个协程死循环，其他饿死
@@ -706,6 +783,12 @@ func main() {
 ​		线程是抢占式的，协程是非抢占式的，但有抢占式调度的逻辑，防止一个协程死循环。
 
 ​		协程不是取代线程，而是抽象在线程之上，线程是被分割的CPU资源，协程需要线程来承载运行，通过GMP调度最大程度的利用线程，提高并发能力。
+
+#### 协程为什么开销小
+
+线程由内核态调度，将寄存器信息保存到内存，再恢复另一个线程的状态；协程有GMP调度器，不需要切换到内核态
+
+从栈空间上来看，线程有一个固定的栈大小（几MB），协程的话初始只有2KB，约1000倍的差距。
 
 <img src="面经-Go.assets/image-20220220222125616.png" alt="image-20220220222125616" style="zoom:50%;" />
 

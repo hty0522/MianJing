@@ -823,9 +823,7 @@ SELECT DISTINCT     select_list FROM     left_table LEFT JOIN     right_table ON
 
 - 主服务器负责写，从服务器负责读，缓解了锁的竞争
 - 从服务器可以使用MyISAM，提升查询性能及节约系统开销
-- 增加冗余，提高可用性
-
-![preview](https://pic1.zhimg.com/v2-e8dcc0d09e97587919bf928104167138_r.jpg)
+- 增加冗余，提高可用性![preview](https://pic1.zhimg.com/v2-e8dcc0d09e97587919bf928104167138_r.jpg)
 
 - 如果读写都在同一个数据库服务器操作，业务系统性能会降低，为提升业务性能，可以通过主从复制（读写分离）来减轻主数据库的负载
 
