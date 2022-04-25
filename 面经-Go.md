@@ -1281,7 +1281,7 @@ func test3() int {
 // 结果为0
 
 func test4() (i int) {
-	defer i++ƒ
+	defer i++
 	return i
 }
 
@@ -1298,3 +1298,4 @@ func test4() (i int) {
 ### Protobuf（Protocol Buffers）
 
 ​		是一种二进制通信格式，相比于json这种文本型不同，二进制更加的快速，并且能够直接生成多种语言的解析和客户端代码，但无法阅读。
+
